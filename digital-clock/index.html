@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Clock - Multi Timezone</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <i class="fas fa-clock"></i>
+                    <div>
+                        <h1>Digital Clock</h1>
+                        <p>Monitor Waktu di Berbagai Time Zone</p>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button id="darkModeBtn" class="btn-icon" title="Toggle Dark Mode">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls-section">
+            <div class="controls">
+                <input type="text" id="searchTimezone" placeholder="🔍 Cari Timezone..." class="search-input">
+                <button id="addTimezoneBtn" class="btn-primary">
+                    <i class="fas fa-plus"></i> Tambah Timezone
+                </button>
+            </div>
+        </div>
+
+        <div class="clocks-container" id="clocksContainer"></div>
+
+        <div id="addTimezoneModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Tambah Timezone</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" id="timezoneSearch" placeholder="Cari timezone..." class="search-input" style="margin-bottom: 15px;">
+                    <div id="timezoneList" class="timezone-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="timezones.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

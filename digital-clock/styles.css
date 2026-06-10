@@ -1,0 +1,278 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --primary-color: #2a5298;
+    --secondary-color: #1e3c72;
+    --accent-color: #667eea;
+    --light-bg: #f8f9fa;
+    --border-color: #e9ecef;
+    --text-color: #333;
+    --text-light: #666;
+    --transition: all 0.3s ease;
+}
+
+body.dark-mode {
+    --light-bg: #1a1a2e;
+    --text-color: #e0e0e0;
+    --border-color: #2a2a3e;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+    color: var(--text-color);
+}
+
+body.dark-mode { background: linear-gradient(135deg, #0f0f1e 0%, #1a1a3e 100%); }
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    overflow: hidden;
+}
+
+body.dark-mode .container { background: #1a1a2e; }
+
+.header {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: white;
+    padding: 30px;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo-section {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.logo-section i {
+    font-size: 2.5em;
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
+
+.logo-section h1 { font-size: 2.5em; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+.logo-section p { font-size: 1.1em; opacity: 0.9; }
+
+.header-actions { display: flex; gap: 10px; }
+
+.btn-icon {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: 2px solid rgba(255,255,255,0.3);
+    cursor: pointer;
+    font-size: 1.2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+}
+
+.btn-icon:hover { background: rgba(255,255,255,0.3); transform: scale(1.1); }
+
+.controls-section {
+    padding: 25px;
+    background: var(--light-bg);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.controls {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.search-input {
+    padding: 12px 20px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1em;
+    background: white;
+    color: var(--text-color);
+    flex: 1;
+    min-width: 150px;
+}
+
+body.dark-mode .search-input { background: #2a2a3e; color: var(--text-color); }
+
+.btn-primary {
+    padding: 12px 25px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    background: var(--primary-color);
+    color: white;
+    white-space: nowrap;
+}
+
+.btn-primary:hover { background: var(--secondary-color); }
+
+.clocks-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 25px;
+    padding: 30px;
+}
+
+.clock-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    padding: 25px;
+    color: white;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    transition: var(--transition);
+}
+
+.clock-card:hover { transform: translateY(-10px); }
+
+.clock-card h3 { font-size: 1.3em; margin-bottom: 5px; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+.clock-card p { font-size: 0.9em; opacity: 0.9; margin-top: 5px; }
+
+.digital-time {
+    font-size: 3em;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    letter-spacing: 2px;
+    margin: 20px 0;
+}
+
+.clock-footer {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.offset { font-size: 0.85em; opacity: 0.8; }
+
+.clock-actions { display: flex; gap: 8px; }
+
+.btn-small {
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    color: white;
+    cursor: pointer;
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+}
+
+.btn-small:hover { background: rgba(255,255,255,0.3); }
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background-color: white;
+    border-radius: 15px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+body.dark-mode .modal-content { background-color: #2a2a3e; }
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.modal-header h2 { color: var(--primary-color); }
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: var(--text-light);
+}
+
+.modal-body { padding: 20px; }
+
+.timezone-list { display: flex; flex-direction: column; gap: 10px; }
+
+.timezone-item {
+    padding: 12px 15px;
+    background: var(--light-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.timezone-item:hover { border-color: var(--accent-color); }
+
+.timezone-info h4 { margin: 0 0 5px 0; }
+.timezone-info p { margin: 0; font-size: 0.85em; }
+
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 20px 30px;
+    background: #28a745;
+    color: white;
+    border-radius: 8px;
+    z-index: 2000;
+    display: none;
+}
+
+.toast.active { display: block; }
+.toast.info { background: #007bff; }
+
+@media (max-width: 768px) {
+    .header { padding: 20px; }
+    .logo-section { flex-direction: column; text-align: center; }
+    .logo-section h1 { font-size: 1.5em; }
+    .clocks-container { grid-template-columns: 1fr; }
+    .digital-time { font-size: 2em; }
+}

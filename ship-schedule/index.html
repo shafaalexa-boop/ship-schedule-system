@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Informasi Jadwal Kapal</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <i class="fas fa-ship"></i>
+                    <div>
+                        <h1>Sistem Informasi Jadwal Kapal</h1>
+                        <p>Port Management Information System - Monitor Jadwal Kapal Real-time</p>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button id="refreshBtn" class="btn-icon" title="Refresh Data">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button id="darkModeBtn" class="btn-icon" title="Toggle Dark Mode">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="status-bar">
+                <span id="lastUpdate">Last Updated: --</span>
+                <span id="totalShips">Total Ships: 0</span>
+            </div>
+        </div>
+
+        <div class="search-section">
+            <form class="search-form" id="searchForm">
+                <div class="search-group">
+                    <input type="text" id="shipName" placeholder="🔍 Nama Kapal / Nomor IMO" class="search-input">
+                </div>
+                <div class="search-group">
+                    <input type="text" id="origin" placeholder="📍 Port of Origin" class="search-input">
+                </div>
+                <div class="search-group">
+                    <input type="text" id="destination" placeholder="📍 Port of Destination" class="search-input">
+                </div>
+                <div class="search-group">
+                    <select id="status" class="search-input">
+                        <option value="">Semua Status</option>
+                        <option value="berlayar">Berlayar</option>
+                        <option value="menunggu">Menunggu</option>
+                        <option value="tiba">Tiba</option>
+                        <option value="ditarik">Ditarik</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-search"></i> Cari
+                </button>
+                <button type="reset" class="btn-secondary">
+                    <i class="fas fa-times"></i> Reset
+                </button>
+            </form>
+        </div>
+
+        <div class="stats-section" id="statsSection">
+            <div class="stat-card berlayar-card">
+                <div class="stat-icon"><i class="fas fa-ship"></i></div>
+                <div class="stat-content">
+                    <h3 id="stat-berlayar">0</h3>
+                    <p>Kapal Berlayar</p>
+                </div>
+            </div>
+            <div class="stat-card menunggu-card">
+                <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
+                <div class="stat-content">
+                    <h3 id="stat-menunggu">0</h3>
+                    <p>Kapal Menunggu</p>
+                </div>
+            </div>
+            <div class="stat-card tiba-card">
+                <div class="stat-icon"><i class="fas fa-anchor"></i></div>
+                <div class="stat-content">
+                    <h3 id="stat-tiba">0</h3>
+                    <p>Kapal Tiba</p>
+                </div>
+            </div>
+            <div class="stat-card ditarik-card">
+                <div class="stat-icon"><i class="fas fa-ban"></i></div>
+                <div class="stat-content">
+                    <h3 id="stat-ditarik">0</h3>
+                    <p>Kapal Ditarik</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-section">
+            <div class="table-header">
+                <h2>📋 Jadwal Kapal Terkini</h2>
+                <div class="table-controls">
+                    <select id="viewMode" class="view-toggle">
+                        <option value="table">Tampilan Tabel</option>
+                        <option value="card">Tampilan Kartu</option>
+                    </select>
+                    <button id="exportBtn" class="btn-icon" title="Export to CSV">
+                        <i class="fas fa-download"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="tableView" class="table-view active">
+                <div class="table-responsive">
+                    <table class="schedule-table" id="scheduleTable">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" id="selectAll" title="Select All"></th>
+                                <th onclick="sortTable('no')">No <i class="fas fa-sort"></i></th>
+                                <th onclick="sortTable('nama')">Nama Kapal <i class="fas fa-sort"></i></th>
+                                <th onclick="sortTable('imo')">IMO Number <i class="fas fa-sort"></i></th>
+                                <th onclick="sortTable('origin')">Port of Origin <i class="fas fa-sort"></i></th>
+                                <th onclick="sortTable('destination')">Port of Destination <i class="fas fa-sort"></i></th>
+                                <th onclick="sortTable('tiba')">Jadwal Tiba <i class="fas fa-sort"></i></th>
+                                <th onclick="sortTable('bangkit')">Jadwal Bangkit <i class="fas fa-sort"></i></th>
+                                <th onclick="sortTable('berth')">Berth <i class="fas fa-sort"></i></th>
+                                <th onclick="sortTable('status')">Status <i class="fas fa-sort"></i></th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+                <div id="noResults" class="no-results" style="display: none;">
+                    <i class="fas fa-search"></i>
+                    <p>Tidak ada data kapal yang sesuai dengan pencarian</p>
+                </div>
+            </div>
+
+            <div id="cardView" class="card-view">
+                <div id="cardContainer" class="card-container"></div>
+            </div>
+        </div>
+
+        <div class="pagination" id="pagination"></div>
+
+        <div class="footer">
+            <p>© 2026 Sistem Informasi Jadwal Kapal - Port Authority Management System</p>
+            <p>Last Updated: <span id="footerTime">--</span></p>
+        </div>
+    </div>
+
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Detail Kapal</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div id="modalBody" class="modal-body"></div>
+            <div class="modal-footer">
+                <button class="btn-secondary modal-close">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
