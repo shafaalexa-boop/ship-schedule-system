@@ -2,7 +2,41 @@ let selectedTimezones = JSON.parse(localStorage.getItem('selectedTimezones')) ||
 let darkMode = localStorage.getItem('darkMode') === 'true';
 let updateInterval;
 
+// Cache for DOM elements
+const domCache = {
+    clocksContainer: null,
+    searchTimezone: null,
+    timezoneList: null,
+    toast: null,
+    addTimezoneModal: null
+};
+
+// Cache for timezone offsets
+const timezoneOffsetCache = new Map();
+
+// Cache for clock cards
+const clockCardCache = new Map();
+
+// Debounce helper
+function debounce(func, delay) {
+    let timeoutId;
+    return function(...args) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func(...args), delay);
+    };
+}
+
+// Debounced timezone list render flag
+let timezoneListRendered = false;
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Cache DOM elements
+    domCache.clocksContainer = document.getElementById('clocksContainer');
+    domCache.searchTimezone = document.getElementById('searchTimezone');
+    domCache.timezoneList = document.getElementById('timezoneList');
+    domCache.toast = document.getElementById('toast');
+    domCache.addTimezoneModal = document.getElementById('addTimezoneModal');
+    
     if (darkMode) document.body.classList.add('dark-mode');
     setupEventListeners();
     updateAllClocks();
@@ -12,39 +46,43 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupEventListeners() {
     document.getElementById('darkModeBtn').addEventListener('click', toggleDarkMode);
     document.getElementById('addTimezoneBtn').addEventListener('click', () => openModal('addTimezoneModal'));
-    document.getElementById('timezoneSearch').addEventListener('input', filterTimezones);
+    document.getElementById('timezoneSearch').addEventListener('input', debounce(filterTimezones, 200));
     document.querySelectorAll('.modal-close').forEach(btn => btn.addEventListener('click', closeModal));
-    document.getElementById('searchTimezone').addEventListener('input', (e) => {
-        document.querySelectorAll('.clock-card').forEach(card => {
+    
+    // Debounce search for clock cards
+    domCache.searchTimezone.addEventListener('input', debounce((e) => {
+        const query = e.target.value.toLowerCase();
+        domCache.clocksContainer.querySelectorAll('.clock-card').forEach(card => {
             const text = card.textContent.toLowerCase();
-            card.style.display = text.includes(e.target.value.toLowerCase()) ? '' : 'none';
+            card.style.display = text.includes(query) ? '' : 'none';
         });
-    });
+    }, 150));
 }
 
 function updateAllClocks() {
-    const container = document.getElementById('clocksContainer');
-    if (container.children.length !== selectedTimezones.length) renderClocks();
+    if (domCache.clocksContainer.children.length !== selectedTimezones.length) {
+        renderClocks();
+    }
     
     selectedTimezones.forEach(timezone => {
-        const card = document.querySelector(`[data-timezone="${timezone}"]`);
+        const card = clockCardCache.get(timezone);
         if (card) updateClockDisplay(card, timezone);
     });
 }
 
 function renderClocks() {
-    const container = document.getElementById('clocksContainer');
-    container.innerHTML = '';
+    domCache.clocksContainer.innerHTML = '';
+    clockCardCache.clear();
     
     selectedTimezones.forEach(timezone => {
         const timezoneData = allTimezones.find(t => t.timezone === timezone);
         const card = createClockCard(timezone, timezoneData);
-        container.appendChild(card);
+        domCache.clocksContainer.appendChild(card);
+        clockCardCache.set(timezone, card);
     });
     
-    document.querySelectorAll('.btn-small').forEach(btn => {
-        btn.addEventListener('click', handleClockAction);
-    });
+    // Event delegation for buttons
+    domCache.clocksContainer.addEventListener('click', handleClockAction);
 }
 
 function createClockCard(timezone, timezoneData) {
@@ -93,8 +131,12 @@ function updateClockDisplay(card, timezone) {
 }
 
 function renderTimezoneList() {
-    const list = document.getElementById('timezoneList');
-    list.innerHTML = '';
+    // Only render if not already rendered
+    if (timezoneListRendered && domCache.timezoneList.children.length > 0) {
+        return;
+    }
+    
+    const fragment = document.createDocumentFragment();
     
     allTimezones.forEach(tz => {
         const isSelected = selectedTimezones.includes(tz.timezone);
@@ -114,16 +156,30 @@ function renderTimezoneList() {
             item.style.opacity = '0.5';
             item.style.pointerEvents = 'none';
         } else {
-            item.addEventListener('click', () => addTimezone(tz.timezone));
+            item.setAttribute('data-timezone', tz.timezone);
+            item.style.cursor = 'pointer';
         }
         
-        list.appendChild(item);
+        fragment.appendChild(item);
+    });
+    
+    domCache.timezoneList.innerHTML = '';
+    domCache.timezoneList.appendChild(fragment);
+    timezoneListRendered = true;
+    
+    // Event delegation for timezone items
+    domCache.timezoneList.addEventListener('click', (e) => {
+        const item = e.target.closest('.timezone-item');
+        if (item && item.getAttribute('data-timezone')) {
+            addTimezone(item.getAttribute('data-timezone'));
+            timezoneListRendered = false; // Reset for next modal open
+        }
     });
 }
 
 function filterTimezones() {
     const query = document.getElementById('timezoneSearch').value.toLowerCase();
-    document.querySelectorAll('.timezone-item').forEach(item => {
+    domCache.timezoneList.querySelectorAll('.timezone-item').forEach(item => {
         const text = item.textContent.toLowerCase();
         item.style.display = text.includes(query) ? '' : 'none';
     });
@@ -136,17 +192,25 @@ function addTimezone(timezone) {
         updateAllClocks();
         showToast(`${timezone} ditambahkan`, 'success');
         closeModal();
+        timezoneListRendered = false; // Reset for next modal open
     }
 }
 
 function removeTimezone(timezone) {
     selectedTimezones = selectedTimezones.filter(tz => tz !== timezone);
     localStorage.setItem('selectedTimezones', JSON.stringify(selectedTimezones));
+    clockCardCache.delete(timezone);
     updateAllClocks();
     showToast(`${timezone} dihapus`, 'info');
+    timezoneListRendered = false; // Reset for next modal open
 }
 
 function getTimezoneOffset(timezone) {
+    // Check cache first
+    if (timezoneOffsetCache.has(timezone)) {
+        return timezoneOffsetCache.get(timezone);
+    }
+    
     const now = new Date();
     const utcTime = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
     const tzTime = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
@@ -156,13 +220,21 @@ function getTimezoneOffset(timezone) {
     const hours = Math.floor(Math.abs(offset));
     const minutes = Math.round((Math.abs(offset) % 1) * 60);
     
-    return `${sign}${hours}:${minutes.toString().padStart(2, '0')}`;
+    const offsetStr = `${sign}${hours}:${minutes.toString().padStart(2, '0')}`;
+    
+    // Cache for 1 hour to avoid recalculation
+    timezoneOffsetCache.set(timezone, offsetStr);
+    setTimeout(() => timezoneOffsetCache.delete(timezone), 3600000);
+    
+    return offsetStr;
 }
 
 function openModal(modalId) {
     const modal = document.getElementById(modalId);
     modal.classList.add('active');
-    if (modalId === 'addTimezoneModal') renderTimezoneList();
+    if (modalId === 'addTimezoneModal') {
+        renderTimezoneList();
+    }
 }
 
 function closeModal() {
@@ -172,7 +244,9 @@ function closeModal() {
 }
 
 function handleClockAction(e) {
-    const button = e.currentTarget;
+    const button = e.target.closest('.btn-small');
+    if (!button) return;
+    
     const action = button.getAttribute('data-action');
     const timezone = button.getAttribute('data-timezone');
     
@@ -195,8 +269,7 @@ function toggleDarkMode() {
 }
 
 function showToast(message, type = 'success') {
-    const toast = document.getElementById('toast');
-    toast.textContent = message;
-    toast.className = `toast active ${type}`;
-    setTimeout(() => toast.classList.remove('active'), 3000);
+    domCache.toast.textContent = message;
+    domCache.toast.className = `toast active ${type}`;
+    setTimeout(() => domCache.toast.classList.remove('active'), 3000);
 }

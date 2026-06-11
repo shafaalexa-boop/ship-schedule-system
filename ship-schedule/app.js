@@ -4,6 +4,53 @@ let currentPage = 1;
 let itemsPerPage = 10;
 let sortConfig = { key: 'no', direction: 'asc' };
 let darkMode = localStorage.getItem('darkMode') === 'true';
+let hasSearchChanged = false;
+
+// Cache for DOM elements
+const shipDomCache = {
+    tableView: null,
+    cardView: null,
+    tableBody: null,
+    cardContainer: null,
+    noResults: null,
+    toast: null,
+    shipName: null,
+    origin: null,
+    destination: null,
+    status: null
+};
+
+// Debounce helper
+function debounce(func, delay) {
+    let timeoutId;
+    return function(...args) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func(...args), delay);
+    };
+}
+
+// Debounced search handler
+const debouncedHandleSearch = debounce(() => {
+    const shipName = shipDomCache.shipName.value.toLowerCase();
+    const origin = shipDomCache.origin.value.toLowerCase();
+    const destination = shipDomCache.destination.value.toLowerCase();
+    const status = shipDomCache.status.value.toLowerCase();
+    
+    filteredShips = allShips.filter(ship => {
+        const matchName = !shipName || ship.nama.toLowerCase().includes(shipName) || ship.imo.includes(shipName);
+        const matchOrigin = !origin || ship.origin.toLowerCase().includes(origin);
+        const matchDest = !destination || ship.destination.toLowerCase().includes(destination);
+        const matchStatus = !status || ship.status === status;
+        
+        return matchName && matchOrigin && matchDest && matchStatus;
+    });
+    
+    currentPage = 1;
+    hasSearchChanged = true;
+    renderTable();
+    updateStats();
+    showToast(`Ditemukan ${filteredShips.length} kapal`, 'info');
+}, 300);
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
@@ -12,6 +59,18 @@ document.addEventListener('DOMContentLoaded', () => {
 function initializeApp() {
     allShips = [...shipScheduleData];
     filteredShips = [...allShips];
+    
+    // Cache DOM elements
+    shipDomCache.tableView = document.getElementById('tableView');
+    shipDomCache.cardView = document.getElementById('cardView');
+    shipDomCache.tableBody = document.getElementById('tableBody');
+    shipDomCache.cardContainer = document.getElementById('cardContainer');
+    shipDomCache.noResults = document.getElementById('noResults');
+    shipDomCache.toast = document.getElementById('toast');
+    shipDomCache.shipName = document.getElementById('shipName');
+    shipDomCache.origin = document.getElementById('origin');
+    shipDomCache.destination = document.getElementById('destination');
+    shipDomCache.status = document.getElementById('status');
     
     if (darkMode) {
         document.body.classList.add('dark-mode');
@@ -24,7 +83,11 @@ function initializeApp() {
 }
 
 function setupEventListeners() {
-    document.getElementById('searchForm').addEventListener('submit', handleSearch);
+    document.getElementById('searchForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        debouncedHandleSearch();
+    });
+    
     document.getElementById('searchForm').addEventListener('reset', handleReset);
     document.getElementById('viewMode').addEventListener('change', handleViewChange);
     document.getElementById('darkModeBtn').addEventListener('click', toggleDarkMode);
@@ -39,40 +102,28 @@ function setupEventListeners() {
     document.getElementById('detailModal').addEventListener('click', (e) => {
         if (e.target.id === 'detailModal') closeModal();
     });
-}
-
-function handleSearch(e) {
-    e.preventDefault();
     
-    const shipName = document.getElementById('shipName').value.toLowerCase();
-    const origin = document.getElementById('origin').value.toLowerCase();
-    const destination = document.getElementById('destination').value.toLowerCase();
-    const status = document.getElementById('status').value.toLowerCase();
-    
-    filteredShips = allShips.filter(ship => {
-        const matchName = !shipName || ship.nama.toLowerCase().includes(shipName) || ship.imo.includes(shipName);
-        const matchOrigin = !origin || ship.origin.toLowerCase().includes(origin);
-        const matchDest = !destination || ship.destination.toLowerCase().includes(destination);
-        const matchStatus = !status || ship.status === status;
-        
-        return matchName && matchOrigin && matchDest && matchStatus;
-    });
-    
-    currentPage = 1;
-    renderTable();
-    showToast(`Ditemukan ${filteredShips.length} kapal`, 'info');
+    // Add input listeners for search debouncing
+    [shipDomCache.shipName, shipDomCache.origin, shipDomCache.destination, shipDomCache.status]
+        .forEach(el => el.addEventListener('input', debouncedHandleSearch));
 }
 
 function handleReset() {
     filteredShips = [...allShips];
     currentPage = 1;
+    hasSearchChanged = true;
     renderTable();
+    updateStats();
     showToast('Filter direset', 'info');
 }
 
 function sortTable(key) {
-    const direction = sortConfig.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc';
-    sortConfig = { key, direction };
+    // Only re-sort if sort key changed
+    if (sortConfig.key === key) {
+        sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        sortConfig = { key, direction: 'asc' };
+    }
     
     filteredShips.sort((a, b) => {
         let aVal = a[key];
@@ -83,8 +134,8 @@ function sortTable(key) {
             bVal = parseInt(bVal) || bVal;
         }
         
-        if (aVal < bVal) return direction === 'asc' ? -1 : 1;
-        if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
     });
     
@@ -103,73 +154,100 @@ function renderTable() {
 }
 
 function renderTableView() {
-    document.getElementById('tableView').classList.add('active');
-    document.getElementById('cardView').classList.remove('active');
+    shipDomCache.tableView.classList.add('active');
+    shipDomCache.cardView.classList.remove('active');
     
     const start = (currentPage - 1) * itemsPerPage;
     const end = start + itemsPerPage;
     const paginatedShips = filteredShips.slice(start, end);
     
-    const tbody = document.getElementById('tableBody');
-    const noResults = document.getElementById('noResults');
-    
     if (paginatedShips.length === 0) {
-        tbody.innerHTML = '';
-        noResults.style.display = 'flex';
+        shipDomCache.tableBody.innerHTML = '';
+        shipDomCache.noResults.style.display = 'flex';
         return;
     }
     
-    noResults.style.display = 'none';
+    shipDomCache.noResults.style.display = 'none';
     
-    tbody.innerHTML = paginatedShips.map((ship, index) => `
-        <tr>
+    // Use DocumentFragment for efficient DOM updates
+    const fragment = document.createDocumentFragment();
+    
+    paginatedShips.forEach((ship, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
             <td><input type="checkbox" class="ship-checkbox" value="${ship.id}"></td>
             <td>${start + index + 1}</td>
-            <td><strong>${ship.nama}</strong></td>
-            <td>${ship.imo}</td>
-            <td>${ship.origin}</td>
-            <td>${ship.destination}</td>
-            <td>${ship.tiba}</td>
-            <td>${ship.bangkit}</td>
-            <td>${ship.berth}</td>
+            <td><strong>${escapeHtml(ship.nama)}</strong></td>
+            <td>${escapeHtml(ship.imo)}</td>
+            <td>${escapeHtml(ship.origin)}</td>
+            <td>${escapeHtml(ship.destination)}</td>
+            <td>${escapeHtml(ship.tiba)}</td>
+            <td>${escapeHtml(ship.bangkit)}</td>
+            <td>${escapeHtml(ship.berth)}</td>
             <td><span class="status ${ship.status}">${capitalizeStatus(ship.status)}</span></td>
-            <td><button class="btn-action btn-view" onclick="showDetail('${ship.id}')">
+            <td><button class="btn-action btn-view" data-ship-id="${ship.id}">
                 <i class="fas fa-eye"></i> Lihat
             </button></td>
-        </tr>
-    `).join('');
+        `;
+        fragment.appendChild(row);
+    });
+    
+    shipDomCache.tableBody.innerHTML = '';
+    shipDomCache.tableBody.appendChild(fragment);
+    
+    // Event delegation for view buttons
+    shipDomCache.tableBody.addEventListener('click', (e) => {
+        const button = e.target.closest('.btn-view');
+        if (button) {
+            showDetail(button.getAttribute('data-ship-id'));
+        }
+    });
 }
 
 function renderCardView() {
-    document.getElementById('tableView').classList.remove('active');
-    document.getElementById('cardView').classList.add('active');
+    shipDomCache.tableView.classList.remove('active');
+    shipDomCache.cardView.classList.add('active');
     
     const start = (currentPage - 1) * itemsPerPage;
     const end = start + itemsPerPage;
     const paginatedShips = filteredShips.slice(start, end);
     
-    const cardContainer = document.getElementById('cardContainer');
-    
     if (paginatedShips.length === 0) {
-        cardContainer.innerHTML = '<div class="no-results"><i class="fas fa-search"></i><p>Tidak ada data kapal</p></div>';
+        shipDomCache.cardContainer.innerHTML = '<div class="no-results"><i class="fas fa-search"></i><p>Tidak ada data kapal</p></div>';
         return;
     }
     
-    cardContainer.innerHTML = paginatedShips.map(ship => `
-        <div class="ship-card">
-            <h3>${ship.nama}</h3>
-            <p><span class="label">IMO:</span> ${ship.imo}</p>
-            <p><span class="label">Asal:</span> ${ship.origin}</p>
-            <p><span class="label">Tujuan:</span> ${ship.destination}</p>
-            <p><span class="label">Jadwal Tiba:</span> ${ship.tiba}</p>
+    const fragment = document.createDocumentFragment();
+    
+    paginatedShips.forEach(ship => {
+        const card = document.createElement('div');
+        card.className = 'ship-card';
+        card.innerHTML = `
+            <h3>${escapeHtml(ship.nama)}</h3>
+            <p><span class="label">IMO:</span> ${escapeHtml(ship.imo)}</p>
+            <p><span class="label">Asal:</span> ${escapeHtml(ship.origin)}</p>
+            <p><span class="label">Tujuan:</span> ${escapeHtml(ship.destination)}</p>
+            <p><span class="label">Jadwal Tiba:</span> ${escapeHtml(ship.tiba)}</p>
             <span class="status ${ship.status}">${capitalizeStatus(ship.status)}</span>
             <div class="action-buttons" style="margin-top: 15px;">
-                <button class="btn-action btn-view" onclick="showDetail('${ship.id}')">
+                <button class="btn-action btn-view" data-ship-id="${ship.id}">
                     <i class="fas fa-eye"></i> Detail
                 </button>
             </div>
-        </div>
-    `).join('');
+        `;
+        fragment.appendChild(card);
+    });
+    
+    shipDomCache.cardContainer.innerHTML = '';
+    shipDomCache.cardContainer.appendChild(fragment);
+    
+    // Event delegation for view buttons
+    shipDomCache.cardContainer.addEventListener('click', (e) => {
+        const button = e.target.closest('.btn-view');
+        if (button) {
+            showDetail(button.getAttribute('data-ship-id'));
+        }
+    });
 }
 
 function showDetail(shipId) {
@@ -177,29 +255,27 @@ function showDetail(shipId) {
     if (!ship) return;
     
     document.getElementById('modalTitle').textContent = `Detail Kapal: ${ship.nama}`;
-    document.getElementById('modalBody').innerHTML = `
-        <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd;">
-            <label>Nama Kapal:</label>
-            <span>${ship.nama}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd;">
-            <label>IMO:</label>
-            <span>${ship.imo}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd;">
-            <label>Origin:</label>
-            <span>${ship.origin}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd;">
-            <label>Destination:</label>
-            <span>${ship.destination}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd;">
-            <label>Status:</label>
-            <span><span class="status ${ship.status}">${capitalizeStatus(ship.status)}</span></span>
-        </div>
-    `;
+    const modalBody = document.getElementById('modalBody');
     
+    const details = [
+        { label: 'Nama Kapal', value: ship.nama },
+        { label: 'IMO', value: ship.imo },
+        { label: 'Origin', value: ship.origin },
+        { label: 'Destination', value: ship.destination },
+        { label: 'Status', value: capitalizeStatus(ship.status) }
+    ];
+    
+    let html = '';
+    details.forEach(detail => {
+        html += `
+            <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd;">
+                <label>${detail.label}:</label>
+                <span>${detail.label === 'Status' ? `<span class="status ${ship.status}">${detail.value}</span>` : escapeHtml(detail.value)}</span>
+            </div>
+        `;
+    });
+    
+    modalBody.innerHTML = html;
     document.getElementById('detailModal').classList.add('active');
 }
 
@@ -287,9 +363,14 @@ function capitalizeStatus(status) {
     return map[status] || status;
 }
 
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 function showToast(message, type = 'success') {
-    const toast = document.getElementById('toast');
-    toast.textContent = message;
-    toast.className = `toast active ${type}`;
-    setTimeout(() => toast.classList.remove('active'), 3000);
+    shipDomCache.toast.textContent = message;
+    shipDomCache.toast.className = `toast active ${type}`;
+    setTimeout(() => shipDomCache.toast.classList.remove('active'), 3000);
 }
